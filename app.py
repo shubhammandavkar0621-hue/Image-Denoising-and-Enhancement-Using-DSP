@@ -305,12 +305,29 @@ with st.sidebar:
         unsafe_allow_html=True,
     )
     st.markdown("#### 01 · Image source")
+    # Only offer the local-folder mode when this runtime actually has images in
+    # data/raw. On Streamlit Community Cloud the full dataset is intentionally
+    # excluded from Git, so showing this option with an empty folder is misleading.
+    local_default_root = Path("data/raw")
+    local_dataset_available = bool(get_cached_image_paths(str(local_default_root)))
+    source_options = ["Kaggle public dataset"]
+    if local_dataset_available:
+        source_options.append("Kaggle dataset folder")
+    source_options.append("Upload an image")
+    if st.session_state.get("source") not in source_options:
+        st.session_state["source"] = "Upload an image"
+
     source = st.radio(
         "Choose where to load the reference image from",
-        ["Kaggle public dataset", "Kaggle dataset folder", "Upload an image"],
+        source_options,
         label_visibility="collapsed",
         key="source",
     )
+    if not local_dataset_available:
+        st.caption(
+            "The local dataset-folder option appears automatically when images are present in "
+            "`data/raw`. On this hosted app, use the public Kaggle dataset or upload an image."
+        )
     selected_image: Path | None = None
     image_bytes = None
     image_label = ""
