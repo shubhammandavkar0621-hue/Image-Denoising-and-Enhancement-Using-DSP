@@ -184,24 +184,59 @@ a:hover { color: #1e40af !important; }
 .dsp-footer { margin-top: 2rem; padding-top: 1rem; border-top: 1px solid var(--dsp-border); color: #53647d !important; font-size: 12px; line-height: 1.7; }
 
 /* Inputs and select controls */
-.stButton > button, .stDownloadButton > button, [data-testid="stFormSubmitButton"] > button {
-  min-height: 42px; border-radius: 11px; border: 1px solid #c7d3e4;
-  background: #ffffff; color: #1b2b44 !important; font-weight: 750;
+.stButton > button, .stDownloadButton > button, [data-testid="stFormSubmitButton"] > button,
+[data-testid="stBaseButton-primary"], [data-testid="stBaseButton-secondary"] {
+  min-height: 42px !important; border-radius: 11px !important;
+  border: 1px solid #c7d3e4 !important; background: #ffffff !important;
+  color: #172033 !important; -webkit-text-fill-color: #172033 !important;
+  font-weight: 750 !important; opacity: 1 !important;
   transition: background-color .16s ease, border-color .16s ease, box-shadow .16s ease, transform .16s ease;
 }
-.stButton > button[kind="primary"], .stDownloadButton > button[kind="primary"] {
-  background: #1d4ed8 !important; color: #ffffff !important; border-color: #1d4ed8 !important;
+/* Streamlit versions render button labels as nested paragraphs/spans. Style the
+   descendants too, so global Markdown/sidebar rules cannot make labels disappear. */
+.stButton > button *, .stDownloadButton > button *,
+[data-testid="stFormSubmitButton"] > button *,
+[data-testid="stBaseButton-secondary"] * {
+  color: #172033 !important; -webkit-text-fill-color: #172033 !important;
+  opacity: 1 !important; font-weight: 750 !important;
 }
-.stButton > button:hover, .stDownloadButton > button:hover {
+.stButton > button[kind="primary"], .stDownloadButton > button[kind="primary"],
+[data-testid="stBaseButton-primary"], button[kind="primary"] {
+  background: #1d4ed8 !important; color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important; border-color: #1d4ed8 !important;
+}
+.stButton > button[kind="primary"] *, .stDownloadButton > button[kind="primary"] *,
+[data-testid="stBaseButton-primary"] *, button[kind="primary"] * {
+  color: #ffffff !important; -webkit-text-fill-color: #ffffff !important;
+}
+.stButton > button:hover, .stDownloadButton > button:hover,
+[data-testid="stBaseButton-secondary"]:hover {
   transform: translateY(-1px); border-color: #6489df !important;
   box-shadow: 0 5px 14px rgba(29,78,216,.16);
-  background: #f0f5ff !important; color: #173d91 !important;
+  background: #eaf1ff !important; color: #173d91 !important;
+  -webkit-text-fill-color: #173d91 !important;
 }
-.stButton > button[kind="primary"]:hover, .stDownloadButton > button[kind="primary"]:hover {
-  background: #1e40af !important; border-color: #1e40af !important; color: #ffffff !important;
+.stButton > button:hover *, .stDownloadButton > button:hover *,
+[data-testid="stBaseButton-secondary"]:hover * {
+  color: #173d91 !important; -webkit-text-fill-color: #173d91 !important;
 }
-.stButton > button:disabled, .stDownloadButton > button:disabled {
-  background: #e8edf5 !important; border-color: #d4dce8 !important; color: #7b8799 !important; opacity: 1 !important;
+.stButton > button[kind="primary"]:hover, .stDownloadButton > button[kind="primary"]:hover,
+[data-testid="stBaseButton-primary"]:hover, button[kind="primary"]:hover {
+  background: #1e40af !important; border-color: #1e40af !important;
+  color: #ffffff !important; -webkit-text-fill-color: #ffffff !important;
+}
+.stButton > button[kind="primary"]:hover *, .stDownloadButton > button[kind="primary"]:hover *,
+[data-testid="stBaseButton-primary"]:hover *, button[kind="primary"]:hover * {
+  color: #ffffff !important; -webkit-text-fill-color: #ffffff !important;
+}
+.stButton > button:disabled, .stDownloadButton > button:disabled,
+[data-testid="stBaseButton-primary"]:disabled, [data-testid="stBaseButton-secondary"]:disabled {
+  background: #e8edf5 !important; border-color: #d4dce8 !important;
+  color: #59677c !important; -webkit-text-fill-color: #59677c !important; opacity: 1 !important;
+}
+.stButton > button:disabled *, .stDownloadButton > button:disabled *,
+[data-testid="stBaseButton-primary"]:disabled *, [data-testid="stBaseButton-secondary"]:disabled * {
+  color: #59677c !important; -webkit-text-fill-color: #59677c !important; opacity: 1 !important;
 }
 .stButton > button:focus-visible, .stDownloadButton > button:focus-visible, button:focus-visible,
 input:focus-visible, textarea:focus-visible, [role="combobox"]:focus-visible,
