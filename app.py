@@ -27,6 +27,29 @@ from modules.metrics import calculate_metrics
 from modules.recommendations import recommend_configuration
 
 
+# Public Kaggle data is downloaded only when a visitor chooses that source.
+# Streamlit caches the dataset root for the lifetime of the running app instance.
+KAGGLE_DATASET_HANDLE = "puneet6060/intel-image-classification"
+
+
+@st.cache_resource(show_spinner=False)
+def get_public_kaggle_dataset_root() -> str:
+    """Download the public Intel Image Classification dataset on first use."""
+    try:
+        import kagglehub
+    except ImportError as exc:  # pragma: no cover - handled by deployment requirements
+        raise RuntimeError(
+            "The kagglehub package is missing. Install dependencies from requirements.txt."
+        ) from exc
+    return str(kagglehub.dataset_download(KAGGLE_DATASET_HANDLE))
+
+
+@st.cache_data(show_spinner=False)
+def get_cached_image_paths(dataset_root: str) -> tuple[str, ...]:
+    """Cache recursive image discovery so widget reruns do not rescan every file."""
+    return tuple(str(path) for path in find_images(dataset_root))
+
+
 # -----------------------------------------------------------------------------
 # Page setup and design system
 # -----------------------------------------------------------------------------
@@ -284,7 +307,7 @@ with st.sidebar:
     st.markdown("#### 01 · Image source")
     source = st.radio(
         "Choose where to load the reference image from",
-        ["Kaggle dataset folder", "Upload an image"],
+        ["Kaggle public dataset", "Kaggle dataset folder", "Upload an image"],
         label_visibility="collapsed",
         key="source",
     )
@@ -292,6 +315,8 @@ with st.sidebar:
     image_bytes = None
     image_label = ""
     all_paths: list[Path] = []
+    dataset_root: str | None = None
+    dataset_load_error: str | None = None
 
     if source == "Upload an image":
         uploaded = st.file_uploader(
@@ -303,39 +328,105 @@ with st.sidebar:
         if uploaded is not None:
             image_bytes = uploaded
             image_label = uploaded.name
+
+    elif source == "Kaggle public dataset":
+        st.caption(
+            "Uses the public Intel Image Classification dataset on Kaggle. "
+            "The first download can take a few minutes; it is cached while this app instance stays running."
+        )
+        if st.button(
+            "Load public Kaggle dataset",
+            type="primary",
+            use_container_width=True,
+            key="load_public_kaggle_dataset_button",
+        ):
+            st.session_state["_public_kaggle_load_requested"] = True
+
+        if st.session_state.get("_public_kaggle_load_requested", False):
+            try:
+                with st.spinner("Downloading the public Kaggle dataset on first use… this may take a few minutes."):
+                    dataset_root = get_public_kaggle_dataset_root()
+                st.markdown(
+                    '<div class="dsp-status"><span class="dsp-status-dot"></span>Public Kaggle dataset is available</div>',
+                    unsafe_allow_html=True,
+                )
+            except Exception as exc:
+                dataset_load_error = str(exc)
+                st.error("The public Kaggle dataset could not be downloaded.")
+                st.caption(
+                    "Check the deployment logs and internet access. You can still use Upload an image. "
+                    f"Details: {dataset_load_error}"
+                )
+        else:
+            st.info("Click **Load public Kaggle dataset** to make the sample images available in this session.")
+
     else:
         dataset_root = st.text_input(
             "Dataset folder path",
             help="Use a path relative to the project directory, e.g. data/raw.",
             key="dataset_root",
         )
+
+    # Both the public Kaggle source and a local dataset folder share the same browser.
+    if source != "Upload an image" and dataset_root:
         with st.spinner("Scanning dataset folders…"):
-            all_paths = find_images(dataset_root)
+            all_paths = [Path(path) for path in get_cached_image_paths(str(dataset_root))]
+
         if all_paths:
-            class_names = ["All categories"] + sorted({p.parent.name for p in all_paths})
-            category = st.selectbox("Image category", class_names, key="dataset_category")
-            candidates = all_paths if category == "All categories" else [p for p in all_paths if p.parent.name == category]
-            max_options = 600
-            candidates_for_select = candidates[:max_options]
-            if len(candidates) > max_options:
-                st.caption(f"Showing {max_options} of {len(candidates):,} matching images. Use image upload for a specific file outside this list.")
-            selected_text = st.selectbox(
-                "Reference image",
-                [str(path) for path in candidates_for_select],
-                format_func=lambda value: Path(value).name + (f"  ·  {Path(value).parent.name}" if Path(value).parent.name else ""),
-                key="selected_reference_image",
-            )
-            selected_image = Path(selected_text)
-            image_label = selected_image.name
-            st.markdown(
-                f'<div class="dsp-status"><span class="dsp-status-dot"></span>{len(all_paths):,} images detected</div>',
-                unsafe_allow_html=True,
-            )
-        else:
+            known_splits = [
+                name for name in ("seg_train", "seg_test", "seg_pred")
+                if any(name in path.parts for path in all_paths)
+            ]
+            if known_splits:
+                split_options = ["All splits"] + known_splits
+                if st.session_state.get("dataset_split_selection") not in split_options:
+                    st.session_state["dataset_split_selection"] = "All splits"
+                selected_split = st.selectbox(
+                    "Dataset split",
+                    split_options,
+                    help="Choose training, testing, prediction, or all images from the dataset.",
+                    key="dataset_split_selection",
+                )
+                if selected_split != "All splits":
+                    all_paths = [path for path in all_paths if selected_split in path.parts]
+
+            if all_paths:
+                class_names = ["All categories"] + sorted({path.parent.name for path in all_paths})
+                if st.session_state.get("dataset_category") not in class_names:
+                    st.session_state["dataset_category"] = "All categories"
+                category = st.selectbox("Image category", class_names, key="dataset_category")
+                candidates = all_paths if category == "All categories" else [path for path in all_paths if path.parent.name == category]
+                max_options = 600
+                candidates_for_select = candidates[:max_options]
+                if len(candidates) > max_options:
+                    st.caption(
+                        f"Showing {max_options} of {len(candidates):,} matching images. "
+                        "Use image upload for a specific file outside this list."
+                    )
+                image_options = [str(path) for path in candidates_for_select]
+                if st.session_state.get("selected_reference_image") not in image_options:
+                    st.session_state["selected_reference_image"] = image_options[0]
+                selected_text = st.selectbox(
+                    "Reference image",
+                    image_options,
+                    format_func=lambda value: Path(value).name + (f"  ·  {Path(value).parent.name}" if Path(value).parent.name else ""),
+                    key="selected_reference_image",
+                )
+                selected_image = Path(selected_text)
+                image_label = selected_image.name
+                st.markdown(
+                    f'<div class="dsp-status"><span class="dsp-status-dot"></span>{len(all_paths):,} images available in current selection</div>',
+                    unsafe_allow_html=True,
+                )
+            else:
+                st.warning("No images were found in the selected dataset split.")
+        elif source == "Kaggle dataset folder":
             st.markdown(
                 '<div class="dsp-warn"><strong>No images detected.</strong><br>Check that the Kaggle folders are inside <code>data/raw</code>, or update the path above.</div>',
                 unsafe_allow_html=True,
             )
+        elif source == "Kaggle public dataset" and not dataset_load_error:
+            st.info("Load the public Kaggle dataset to browse its images.")
 
     st.divider()
     st.markdown("#### 02 · Noise model")
@@ -434,10 +525,18 @@ try:
         dataset_count = None
     else:
         if selected_image is None:
-            st.markdown(
-                '<div class="dsp-note"><strong>Dataset not ready.</strong> Choose a valid dataset folder path in the sidebar. The path is resolved relative to the project folder.</div>',
-                unsafe_allow_html=True,
-            )
+            if source == "Kaggle public dataset":
+                message = (
+                    "<strong>Public dataset not loaded yet.</strong> In the sidebar, choose "
+                    "<em>Kaggle public dataset</em> and click <em>Load public Kaggle dataset</em>. "
+                    "The first download may take a few minutes."
+                )
+            else:
+                message = (
+                    "<strong>Dataset not ready.</strong> Choose a valid local dataset folder path "
+                    "in the sidebar, usually <code>data/raw</code>."
+                )
+            st.markdown(f'<div class="dsp-note">{message}</div>', unsafe_allow_html=True)
             st.stop()
         reference = load_rgb_image(selected_image)
         image_label = selected_image.name

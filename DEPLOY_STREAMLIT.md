@@ -50,3 +50,10 @@ git push
 ```
 
 Community Cloud redeploys when the GitHub repository is updated.
+
+
+## Public Kaggle dataset option
+
+The deployment supports the **Kaggle public dataset** source without committing thousands of image files to GitHub. The first visitor who presses **Load public Kaggle dataset** triggers a download of the public Intel Image Classification dataset (`puneet6060/intel-image-classification`) via `kagglehub`. The files are cached for the running app instance; Streamlit Community Cloud does not guarantee permanent local-file persistence, so a cold start/restart may require another download. The **Upload an image** source is always available as a fallback.
+
+The `requirements.txt` file includes `kagglehub`; keep it committed to GitHub so Streamlit installs the dependency during deployment.

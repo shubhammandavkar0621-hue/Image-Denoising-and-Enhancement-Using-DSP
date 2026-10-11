@@ -93,3 +93,8 @@ The app includes a high-contrast light color scheme in `.streamlit/config.toml`,
 ## Image-based configuration recommendation
 
 The dashboard now analyses the selected reference image for mean brightness, grayscale contrast, Canny edge density, and Laplacian variance. It shows a visible recommendation note with an explainable starter denoiser, strength, and enhancement, and an **Apply suggested configuration** button. This is a local heuristic recommender, not a trained ML model or external AI service. It cannot infer unknown real-world noise from a clean reference; the noise types in this application are synthetic experimental settings.
+
+
+## Public Kaggle dataset on Streamlit Cloud
+
+The sidebar provides three input modes: **Kaggle public dataset**, **Kaggle dataset folder** (for a dataset already present locally), and **Upload an image**. When a visitor selects **Kaggle public dataset** and clicks **Load public Kaggle dataset**, the app downloads the public dataset `puneet6060/intel-image-classification` through `kagglehub`. The dataset is not stored in GitHub. The first download may take several minutes, and an instance restart may require data to be downloaded again. Upload mode remains available if the public dataset download is unavailable.
