@@ -1,0 +1,17 @@
+# Python environments and cache
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Never commit credentials
+.streamlit/secrets.toml
+
+# Large Kaggle dataset stays local; upload images through the app on Streamlit Cloud
+data/raw/*
+!data/raw/.gitkeep
+
+# Generated experiment outputs
+results/*.csv
+results/*.png
